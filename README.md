@@ -14,4 +14,4 @@ This runs the parsed script
 This is just some sample code, you can execute all these file or import any of them
 
 ## Wiki
-This is where I will put the documentation for the language, so check it out: https://github.com/LavaTheif/LavaScript/wiki/
+This is the documentation for the language, so check it out: https://github.com/LavaTheif/LavaScript/wiki/
