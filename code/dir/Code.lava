@@ -1,0 +1,7 @@
+import TestClass;
+
+_test = 0;
+func bob(){
+    System.log("Bob");
+}
+System.log("Bob loaded")

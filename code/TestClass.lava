@@ -1,0 +1,38 @@
+number=0;
+func test(){
+    test=0;
+    System.log("test is set to "+test);
+    if(number==0){
+	System.log("number is 0, changing it to 1");
+	number=1;
+    }else if(number==1){
+	System.log("number is 1, changing it to 0");
+	number=0;
+    }else{
+	System.log("number is neither 0 nor 1");
+    }
+}
+
+func returnTest(a, b){
+    return a+b;
+}
+
+func bloop(){
+    name = System.getString("What's your name?");
+    age = System.getInteger("How old are you?");
+    input = System.getString("Oh thats cool, "+name+", how are you?");
+    System.log("Oh thats, "+input);
+    number = System.getInteger("Enter a number and I will count to it");
+    for(i = 0; i < number; i++){
+	System.log(i+1);
+    }
+    if(number > 50){
+	System.log("That was more than 50 numbers");
+    }else{
+	System.log("That was less than 50 numbers");
+    }
+}
+
+func toString(){
+    return "Hello there, this is the test class";
+}

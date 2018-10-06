@@ -1,0 +1,49 @@
+import dir.application.Test;
+
+t1 = "Test 1";
+t2 = "Test 2";
+
+t3 = 3;
+t4 = 4;
+
+//System.log(t1+" "+t2.toUpperCase());
+System.log(t3+t4);
+t3++;
+//System.log(t3.test());
+
+System.log(t1+t4);
+System.log(t2+t3);
+
+//Examples of the date functions coming soon
+//System.log(date.format(date.now()));
+
+//Examples of boolean logic
+boolean = true && !false;
+if(boolean){
+    System.log(boolean);
+    //System.log(date.formatTime(date.now()));
+    //System.log(date.formatDate(date.now()));
+}
+
+//Maths (Coming soon is a Math class and parenthesis in calculations)
+calculation = 5*10+123/22;
+System.log(calculation);
+calculation++;
+System.log(calculation);
+
+//User Input
+userInput = System.getString("Whats your name?");
+System.log("hi",userInput);
+
+to = System.getInteger("Enter a whole number");
+for(i = 0; i<to; i++){
+    System.log(i);
+}
+
+System.log(System.getDouble("Enter a decimal number"));
+System.log(System.getBoolean("Enter a bool"));
+
+//Exit statement
+//System.exit(0);
+
+//System.log("This wont ever happen");
