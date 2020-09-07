@@ -126,8 +126,9 @@ class Natives:
         print(string[0:-1])
 
     def toString(self, env):
-        return ("String","Class Object of Class "+env.id.replace("/","."))
+        return ("String","Class Object of Class "+env.id.replace("/","."), -1)
     
+
     def getString(self, env, message):
         self.print(message)
         return input(str(message[1]).strip() + " >> ")
@@ -197,27 +198,28 @@ def getCode(code = "", i=0):
 
 def eval_exp(exp, env):
     typ = exp[0]
+    lineNo = -1#exp[2]
     ##Integer, Double, String, Assignment, Operation, Token, Function
     ##TODO remove python int str etc
     if(typ == "Integer"):
-        return ("Integer", int(exp[1]))
+        return ("Integer", int(exp[1]), lineNo)
     
     elif(typ == "Boolean"):
         if(isinstance(exp[1], str)):
-            return ("Boolean", exp[1].lower()=="true")
-        return ("Boolean", exp[1])
+            return ("Boolean", exp[1].lower()=="true", lineNo)
+        return ("Boolean", exp[1], lineNo)
     
     elif(typ == "Double"):
-        return ("Double", float(exp[1]))
+        return ("Double", float(exp[1]), lineNo)
     
     elif(typ == "String"):
-        return ("String", str(exp[1]))#should already be string
+        return ("String", str(exp[1]), lineNo)#should already be string but cast anyway
 
     elif(typ == "Comparator"):###TODO: DOESNT WORK WITH INSTANCES
         return compare(exp, env)
 
     elif(typ == "Negate"):
-        return ("Boolean",not eval_exp(exp[1], env))
+        return ("Boolean",not eval_exp(exp[1], env)[1], lineNo)
         
     elif(typ == "."):
         left = eval_exp(exp[1][0][1], env)
@@ -238,6 +240,9 @@ def eval_exp(exp, env):
         name = exp[1][0][1][1]
         val = eval_exp(exp[1][1][1], env)
         env.setVar(name, val)
+    
+    elif(typ == "Brackets"):
+        return eval_exp(exp[1][0], env)
         
     elif(typ == "Keyword"):
         if(exp[1][0]=="new"):
@@ -326,12 +331,13 @@ def evalList(body, env, function=None):
                 
             continue #Already executed code
         try:#Try and run code, if it fails, print error
+            #print(line)
             store = eval_exp(line, env)
         except Exception as e:
             if(e=="string index out of range" or e=="list index out of range"):
                 print("Did you miss a semi colon?")
             else:
-                print(e)
+                print("Exception on line "+str(line[2])+"\n"+str(e))
         i+=1
     return store
 
@@ -353,7 +359,7 @@ def getClassID(tup, classID=""):
 def createFunction(exp, env):
     name = exp[1][0][1][1]
     args = []
-    for t,n in exp[1][1][1]:
+    for t,n,l in exp[1][1][1]:
         args.append(n)
     fn = ["func",args,exp[1][2][1]]
     env.setFunc(name, fn)
@@ -373,15 +379,15 @@ def callFunction(exp, env):
             funcEnv.setVar(p, a)
         return evalList(body, funcEnv, funcEnv) ##return values
     elif(fn[0]=="native"):
-        a=formatValue(fn[1](env, *args))
-        return a
+        return formatValue(fn[1](env, *args))
         ##TODO change error msg if too many args
         #if(len(insepct.getargspec(fn)!=len(args)):
         #    raise Exception("Invalid arguments.  Expected "+str(len(params))+" got "+str(len(args))+".")
     
 def compare(exp, env):
     typ = exp[1][0][1]
-
+    lineNo = -1#exp[2]
+    
     left = exp[1][1][1]
     right = exp[1][2][1]
 
@@ -389,36 +395,39 @@ def compare(exp, env):
     right = eval_exp(right, env)
     
     if(typ=='=='):
-        return ("Boolean",left[1]==right[1])
+        return ("Boolean",left[1]==right[1], lineNo)
     elif(typ=='>='):
-        return ("Boolean",left[1]>=right[1])
+        return ("Boolean",left[1]>=right[1], lineNo)
     elif(typ=='<='):
-        return ("Boolean",left[1]<=right[1])
+        return ("Boolean",left[1]<=right[1], lineNo)
     elif(typ=='!='):
-        return ("Boolean",left[1]!=right[1])
+        return ("Boolean",left[1]!=right[1], lineNo)
     elif(typ=='>'):
-        return ("Boolean",left[1]>right[1])
+        return ("Boolean",left[1]>right[1], lineNo)
     elif(typ=='<'):
-        return ("Boolean",left[1]<right[1])
+        return ("Boolean",left[1]<right[1], lineNo)
 
     elif(typ=='&&'):#and
-        return ("Boolean",left[1] and right[1])
+        return ("Boolean",left[1] and right[1], lineNo)
     elif(typ=='||'):#or
-        return ("Boolean",left[1] or right[1])
+        return ("Boolean",left[1] or right[1], lineNo)
     elif(typ=='^'):#xor
-        return ("Boolean",left[1] ^ right[1])
+        return ("Boolean",left[1] ^ right[1], lineNo)
 
 def exec_operation(exp, env):
     typ = exp[1][0][1]
+    lineNo = -1#exp[2]
+        
     left = exp[1][1][1]
     right = exp[1][2][1]
+    
     left = eval_exp(left, env)
     right = eval_exp(right, env)
 
     ##if token, maybe pull token value?? idk yet
     if(left[0]=="String" or right[0]=="String"):
         if(typ=="+"):
-            return ("String",str(left[1])+str(right[1]))
+            return ("String",str(left[1])+str(right[1]), lineNo)
         else:
             ##Maybe add *
             raise Exception("Unable to complete operation '"+typ+"' on type String")
@@ -427,24 +436,27 @@ def exec_operation(exp, env):
         if(left[0]=="Double" or right[0]=="Double"):
             retType = "Double"
         if(typ=="+"):
-            return (retType, left[1]+right[1])
+            return (retType, left[1]+right[1], lineNo)
         elif(typ=="-"):
-            return (retType, left[1]-right[1])
+            return (retType, left[1]-right[1], lineNo)
         elif(typ=="/"):
-            return (retType, left[1]/right[1])
+            return (retType, left[1]/right[1], lineNo)
         elif(typ=="*"):
-            return (retType, left[1]*right[1])
+            return (retType, left[1]*right[1], lineNo)
+        elif(typ=="%"):
+            return (retType, left[1]%right[1], lineNo)
 
 
 def formatValue(value):
+    lineNo = -1
     if(isinstance(value, str)):
-        return ("String", value)
+        return ("String", value, lineNo)
     elif(isinstance(value, bool)):
-        return ("Boolean", value)
+        return ("Boolean", value, lineNo)
     elif(isinstance(value, float)):
-        return ("Double", value)
+        return ("Double", value, lineNo)
     elif(isinstance(value, int)):
-        return ("Integer", value)
+        return ("Integer", value, lineNo)
     else:
         return value
 

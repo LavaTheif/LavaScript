@@ -1,11 +1,11 @@
 import prepare
 import run
 
-mode = input("[C] Compile or [E] Execute or [R] Run >> ").upper()
+#mode = input("[C] Compile or [E] Execute or [R] Run >> ").upper()
 ##Compile, packages all files into a .ls file
 ##Execute, run a .ls file
 ##Run, runs scripts in .lava files, or allows script to be entered.
-
+mode="r"
 def join(arr,sep):
     s = ""
     for i in arr:

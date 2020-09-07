@@ -22,6 +22,7 @@ class Tokenize:
         return t.tree
 
     def tokenize(self):
+        self.line = 1
         while(self.index < len(self.data)):
             '''
             Whitespace: ignore
@@ -36,57 +37,59 @@ class Tokenize:
             '''
             char = self.data[self.index]
             if(char in " \t\n\r"):
+                if(char in("\n\r")):
+                    self.line+=1
                 pass
             elif(char in "(){},.;=<>!&|^"):
                 if(char in "=<>!|&^"):
                     nextChar = self.data[self.index+1]
                     if(char+nextChar in ["==","<=",">=","!=","&&","||"]):
-                       yield("Comparator",char+nextChar)
+                       yield("Comparator",char+nextChar, self.line)
                        self.index+=2
                        continue
                     elif(char in "<>^"):
-                       yield("Comparator",char)
+                       yield("Comparator",char, self.line)
                        self.index+=1
                        continue
                     elif(char == "!"):
-                        yield ("Negate","")
+                        yield ("Negate","", self.line)
                         self.index+=1
                         continue
 
-                yield ("Symbol",char)
+                yield ("Symbol",char, self.line)
                 if(char == '}'):
-                    yield("Symbol",';')
+                    yield("Symbol",';', self.line)
 
     
-            elif(char in "/*-+"):
+            elif(char in "/*-+%"):
                 if(self.data[self.index+1]=='/' or self.data[self.index+1]=="*"):
                     self.skipComment()
                 else:
                     nextChar = self.data[self.index+1]
                     if(nextChar in "+-="):
-                        yield("Operation",char+nextChar)
+                        yield("Operation",char+nextChar, self.line)
                         self.index+=1
                     else:
-                        yield("Operation",char)
+                        yield("Operation",char, self.line)
                 
             elif(char == '"'):
                 string = self.getString('"')
-                yield ("String", string)
+                yield ("String", string, self.line)
             elif(re.match("[0-9]",char)):
                 number = self.getRegex("[.0-9]")
                 if("." in number):
-                    yield ("Double",number)
+                    yield ("Double",number, self.line)
                 else:
-                    yield ("Integer",number)
+                    yield ("Integer",number, self.line)
                 
             elif(re.match("[_a-zA-Z]", char)):
                 token = self.getRegex("[_a-zA-Z0-9]")
                 if(token  == "true" or token == "false"):
-                    yield ("Boolean",token)
+                    yield ("Boolean",token, self.line)
                 elif(token in self.keyWords):
-                    yield ("Keyword", token)
+                    yield ("Keyword", token, self.line)
                 else:
-                    yield ("Token", token)
+                    yield ("Token", token, self.line)
             else:
                 raise Exception("Unknown Token: "+token)
                 
@@ -132,33 +135,33 @@ class Tree:
             return last
         typ = self.toupleList[self.index][0]
         value = self.toupleList[self.index][1]
-        
+        lineNo = self.toupleList[self.index][2]
         self.index+=1
         if(typ == "Token"):
-            return self.eval(("Token",value))
+            return self.eval(("Token",value, lineNo))
         elif(typ == "Keyword"):
             if(value in ["return","func","new","import"]):
-                return ("Keyword",[value, self.eval(None)])
+                return ("Keyword",[value, self.eval(None)], lineNo)
             else:
                 if(value == "else"):
                     body = self.eval(None)
                     #print(body)
                     #print(value)
-                    return ("Keyword",[value, ("body",[body])])
+                    return ("Keyword",[value, ("body",[body])], lineNo)
                 else:
-                    return self.eval(("Keyword",[value]))
+                    return self.eval(("Keyword",[value], lineNo))
 
         elif(typ == "Operation"):
             if(value in ["++","--"]):
-                return self.eval(("Assignment", [("left",last), ("right",self.eval(("Operation",[("type",value[0]),("left",last),("right",("Integer","1"))])))]))
+                return self.eval(("Assignment", [("left",last), ("right",self.eval(("Operation",[("type",value[0]),("left",last),("right",("Integer","1"))])))], lineNo))
             elif("=" in value):
-                return self.eval(("Assignment", [("left",last), ("right",self.eval(("Operation",[("type",value[0]),("left",last),("right",self.eval(None))])))]))
+                return self.eval(("Assignment", [("left",last), ("right",self.eval(("Operation",[("type",value[0]),("left",last),("right",self.eval(None))])))], lineNo))
             else:
-                return self.eval(("Operation",[("type",value),("left",last),("right",self.eval(None))]))
+                return self.eval(("Operation",[("type",value),("left",last),("right",self.eval(None))], lineNo))
         elif(typ == "Comparator"):
-            return self.eval(("Comparator",[("type",value),("left",last),("right",self.eval(None))]))
+            return self.eval(("Comparator",[("type",value),("left",last),("right",self.eval(None))], lineNo))
         elif(typ == "Negate"):
-            return ("Negate",self.eval(None))
+            return ("Negate",self.eval(None), lineNo)
         elif(typ == "Symbol"):
             # ) { }
             if(value==';'):
@@ -174,15 +177,21 @@ class Tree:
                 self.index -=1
                 return last
             elif(value == '='):
-                return self.eval(("Assignment", [("left",last), ("right",self.eval(None))]))
+                return self.eval(("Assignment", [("left",last), ("right",self.eval(None))], lineNo))
             elif(value == "("):
-                #TODO also allow () in arithmatics
                 if(last == None):
-                    pass
+                    x=("Brackets", [self.eval(None)], lineNo)
+                    self.index+=1
+                    return self.eval(x)
                 elif(last[0]=="Keyword"):
                     last[1].append(("args", Tree(self.getBlock('(',')')).tree))
                     return self.eval(last)
-                return self.eval(("Function", [("name",last),("args", Tree(self.getBlock('(',')')).tree)]))
+                elif(last[0]=="Token"):
+                    return self.eval(("Function", [("name",last),("args", Tree(self.getBlock('(',')')).tree)], lineNo))
+                x=("Brackets", [self.eval(None)], lineNo)
+                self.index+=1
+                return self.eval(x)
+
             elif(value=="{"):
                 if(last == None):
                     return Tree(self.getBlock('{','}')).tree
@@ -196,19 +205,19 @@ class Tree:
                     return Tree(self.getBlock('{','}')).tree
                     #return self.eval(("block",("body",Tree(self.getBlock('{','}')).tree)))
             elif(value == "."):
-                return (".",[("left",last),("right",self.eval(None))])
+                return (".",[("left",last),("right",self.eval(None))], lineNo)
             else:#
                 pass
                 #return self.eval(("Symbol", [("type",value),("left",last), ("right",self.eval(None))]))
                 ##TODO
         elif(typ=="String"):
-                return self.eval(("String",value))
+                return self.eval(("String",value, lineNo))
         elif(typ=="Integer"):
-                return self.eval(("Integer",value))
+                return self.eval(("Integer",value, lineNo))
         elif(typ=="Double"):
-                return self.eval(("Double",value))
+                return self.eval(("Double",value, lineNo))
         elif(typ=="Boolean"):
-                return self.eval(("Boolean",value))
+                return self.eval(("Boolean",value, lineNo))
         else:
             raise Exception("Unknown Type")
             return None
